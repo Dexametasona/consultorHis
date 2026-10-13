@@ -1,13 +1,11 @@
+import os
 import sqlite3
 from pathlib import Path
 from datetime import datetime
 from contextlib import contextmanager
 
-# Ruta raíz del proyecto
-ROOT_ROUTE = Path(__file__).resolve().parent.parent
-
 # Carpeta donde se guardará la base de datos
-FOLDER_ROUTE = ROOT_ROUTE / "data"
+FOLDER_ROUTE = Path(os.environ['LOCALAPPDATA'])/'Consultor-His'
 FOLDER_ROUTE.mkdir(parents=True, exist_ok=True)
 
 DB_ROUTE = FOLDER_ROUTE / "consultor.db"

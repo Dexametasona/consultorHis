@@ -1,9 +1,11 @@
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from database.database import  getQueryList, delete_query, getPatientsAndVaccinesByQuery
 from services.query_service import getVaccinesByAllDni
 from utils.utils import export_excel
+import threading
+import queue
 
 def initInterface(clientHis):
     def selectQuery(id_query, file):

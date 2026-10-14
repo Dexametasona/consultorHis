@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from database.database import  getQueryList, delete_query, getPatientsAndVaccinesByQuery
 from services.query_service import getVaccinesByAllDni
+from ui.styles import configStyle
 from utils.utils import export_excel, resource_path
 import threading
 import queue
@@ -140,97 +141,128 @@ def initInterface(clientHis):
     #definimos la raiz de la interfaz
     root = tk.Tk()
     root.title("Consultor HIS-MINSA")
-    root.geometry("600x370")
-    root.minsize(600,370)
+    root.geometry("600x398")
+    root.minsize(600,398)
     root.protocol("WM_DELETE_WINDOW",     
                   lambda: close(root, lambda:worker_running))
     root.iconbitmap(str(resource_path("assets/icono.ico")))
     root.grid_rowconfigure(0, weight=1)
     root.grid_rowconfigure(1, weight=0)
     root.grid_columnconfigure(0, weight=1)
-    
-    main_container = tk.Frame(root)
+
+    configStyle(root)
+
+    main_container = ttk.Frame(root, style="App.TFrame")
     main_container.grid(
         row=0,
         column=0,
-        sticky="nsew")
+        sticky="nsew",
+        )
     
     #Interfaz de la conexión a chrome y el archivo de origen
-    getData_container = tk.LabelFrame(main_container, text="Obtener datos")
-    getData_container.pack(fill="x", padx=10)
+    getData_container = ttk.LabelFrame(
+        main_container, 
+        text="Obtener datos", 
+        style="Card.TLabelframe", 
+        padding=(8,7)
+        )
+    getData_container.pack(fill="x")
 
-    tk.Label(getData_container, text="Archivo Excel:").pack(anchor='w', padx=10, pady=(20, 4))
-    file_entry = tk.Frame(getData_container)
-    file_entry.pack(fill="x", padx=10)
+    ttk.Label(
+        getData_container, 
+        text="Archivo Excel:",  
+        style="App.TLabel",
+        font=("Segoe UI", 10, "bold")
+        ).pack(anchor='w', pady=(0, 6))
     
-    input_file = tk.Entry(file_entry)
-    input_file.pack(side="left", fill="x", expand=True)
+    ttk.Label(
+        getData_container,
+        text="Selecciona el archivo que contiene la lista de DNI.",
+        style="Muted.TLabel",
+    ).pack(anchor="w", pady=(0, 10))
 
-    tk.Button(
+    file_entry = ttk.Frame(getData_container, style='App.TFrame')
+    file_entry.pack(fill="x")
+    
+    input_file = ttk.Entry(file_entry, style="App.TEntry")
+    input_file.pack(side="left", fill="x", expand=True, ipady=1)
+
+    ttk.Button(
         file_entry,
-        text="Seleccionar",
+        text="Examinar...",
+        style='Secondary.TButton',
         command= lambda: loadExcel(input_file),
     ).pack(side="left", padx=(8, 0))
     
-    btn_container = tk.Frame(getData_container)
-    btn_container.pack(pady=16, fill="x")
-    btn_container.grid_columnconfigure(1,weight=1)
-    btn_container.grid_columnconfigure(2,weight=1)
+    btn_container = ttk.Frame(getData_container, style='Card.TLabelframe.Label')
+    btn_container.pack(pady=(16, 4), fill="x")
+    btn_container.grid_columnconfigure(0, weight=1)
+    btn_container.grid_columnconfigure(1, weight=1)
+
+    ttk.Button(
+        btn_container,
+        text="Abrir Chrome",
+        command=clientHis.openChrome,
+        style='Secondary.TButton' 
+    ).grid(column=0, row=0, padx=(0,6), sticky='ew')
+    
+    btn_connect = ttk.Button(
+        btn_container,
+        text="Conectar y continuar",
+        command=connectAndExecute,
+        style='Primary.TButton' 
+    )
+    btn_connect.grid(row=0, column=1, sticky="ew", padx=(6, 0))
     
     # interfaz del loader
-    loading_container = tk.Frame(getData_container)
+    loading_container = ttk.Frame(getData_container, style='App.TFrame')
     loading_container.pack(fill="x", padx=10, pady=(0, 8))
 
-    loading_label = tk.Label(loading_container, text="",)
+    loading_label = ttk.Label(loading_container, text="", style='App.TLabel')
     loading_bar = ttk.Progressbar(
         loading_container, 
         mode="determinate", 
         length=250,
         maximum=100
         )
-    progress_label = tk.Label(loading_container, text="0/0 DNI consultados")
-    tk.Button(
-        btn_container,
-        text="Abrir Chrome para iniciar sesión",
-        command=clientHis.openChrome,
-    ).grid(column=1, row=0)
-    
-    btn_connect = tk.Button(
-        btn_container,
-        text="Conectar y continuar",
-        command=connectAndExecute,
-    )
-    btn_connect.grid(column=2, row=0, )
+    progress_label = ttk.Label(loading_container, text="0/0 DNI consultados", style='Muted.TLabel')
     
     #interfaz del procesamiento de la informacion
-    filters_container = tk.LabelFrame(main_container, text='Procesar Información')
-    filters_container.pack(fill='x', padx=10, pady=(8,0), ipady=8)
+    filters_container = ttk.LabelFrame(main_container, text='Procesar Información', style='Card.TLabelframe')
+    filters_container.pack(fill='x', pady=(8,0), ipady=4)
     
-    query_container = tk.Frame(filters_container)
-    query_container.pack(fill='x', padx=8, pady=4)
+    query_container = ttk.Frame(filters_container, style="Card.TLabelframe.Label")
+    query_container.pack(fill='x', padx=8, pady=(8,0))
     query_selected = tk.StringVar(value='Ninguna')
     queryID_selected = tk.IntVar(value=0)
         
-    tk.Button(query_container, 
-              text='seleccionar consulta', 
-              command=lambda: queryListWindow(query_container, selectQuery)
+    ttk.Button(query_container, 
+              text='Seleccionar consulta', 
+              command=lambda: queryListWindow(query_container, selectQuery),
+              style='Secondary.TButton'
               ).grid(column=1, row=0)
-    tk.Label(query_container, textvariable=query_selected).grid(column=2, row=0, padx=8)
+    ttk.Label(query_container, 
+              textvariable=query_selected,
+              style='Card.TLabelframe.Label'
+              ).grid(column=2, row=0, padx=8)
     
-    cpms_container = tk.Frame(filters_container)
+    cpms_container = ttk.Frame(filters_container, style='Card.TLabelframe.Label')
     cpms_container.pack(padx=10, anchor='w')
     
-    tk.Label(
+    ttk.Label(
         cpms_container,
         text="Código CPMS/CIE (mínimo 3 caracteres):",
+        style='Card.TLabelframe.Label'
     ).pack(pady=(16, 4))
 
-    input_codigo = tk.Entry(cpms_container, width=15)
+    input_codigo = ttk.Entry(cpms_container, width=15, style='App.TEntry')
     input_codigo.pack(anchor="w")
     
-    tk.Button(filters_container, 
+    ttk.Button(filters_container, 
               text="Exportar",
-              command=initExport_excel).pack(ipadx=8)
+              command=initExport_excel,
+              style='Primary.TButton'
+              ).pack(ipadx=8)
 
     # -----footer-----
     footer = tk.Frame(root)

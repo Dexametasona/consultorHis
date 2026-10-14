@@ -90,38 +90,46 @@ def export_excel(data, cpms):
     sheet.title = "Atenciones"
     
     # Crear cabeceras dinámicas.
-    headers = ["DNI", "Paciente", "FN"]
+    headers = ["DNI", "Paciente", "FN", "Edad"]
     for lab in labs:
-        for numero in range(columnsBySameLab[lab]):
-            sufijo = "" if numero == 0 else f"({numero})"
+        for number in range(columnsBySameLab[lab]):
+            sufijo = "" if number == 0 else f"({number})"
             headers.append(f"{cpms}-{lab}{sufijo}")
 
     sheet.append(headers)
     
     for dni, datos in patients.items():
-        fila = [dni, datos["paciente"] or "", datos["fn"] or ""]
+        row = [dni, datos["paciente"] or "", datos["fn"] or "", None]
 
         for lab in labs:
-            fechas = sorted(
+            dates = sorted(
                 vaccineGroupByDniAndLab[dni].get(lab, []),
                 key=sort_dates
             )
 
-            cantidad = columnsBySameLab[lab]
+            amount = columnsBySameLab[lab]
 
-            for numero in range(cantidad):
-                fila.append(
-                    fechas[numero]
-                    if numero < len(fechas)
+            for number in range(amount):
+                row.append(
+                    dates[number]
+                    if number < len(dates)
                     else ""
                 )
 
-        sheet.append(fila)
+        sheet.append(row)
+        current_row = sheet.max_row
+        sheet.cell(
+            row=current_row,
+            column=4,
+            value=f'=IF(C{current_row}="","",DATEDIF(C{current_row},TODAY(),"Y"))'
+        )
 
 
-    sheet.freeze_panes = "D2"
+    sheet.freeze_panes = "E2"
     sheet.auto_filter.ref = sheet.dimensions
 
+    
+    
     book.save(output_route)
 
     return output_route

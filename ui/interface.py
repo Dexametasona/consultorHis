@@ -77,7 +77,8 @@ def initInterface(clientHis):
             "Proceso finalizado",
             f"Consulta ID: {result['queryId']}\n"
             f"DNI procesados correctamente: {result['success']}\n"
-            f"Errores: {result['errors']}",
+            f"Errores: {result['errors']}\n"
+            f"Detalles del error: {result['error_detail']}",
             parent=root,
         )
         

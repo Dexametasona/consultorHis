@@ -1,8 +1,16 @@
+Entorno virtual y caché
+.venv/
+venv/
+pycache/
+*.py[cod]
+Archivos generados por PyInstaller
+build/
+dist/
+*.spec.bak
+Base de datos local
 *.db
 *.sqlite
 *.sqlite3
-
-.venv/
-__pycache__/
-build/
-dist/
+Configuración y datos privados
+.env
+.env.*

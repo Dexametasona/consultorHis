@@ -8,34 +8,78 @@ import threading
 import queue
 
 def initInterface(clientHis):
+    result_queue = queue.Queue()
+    worker_running = False
     def selectQuery(id_query, file):
         queryID_selected.set(id_query)
         query_selected.set(f"Consulta: {file}")
         
     def connectAndExecute():
+        nonlocal worker_running
+        if worker_running:
+            return
+        
         origin_route = interfaceValidator(input_file)
         if origin_route is None:
             return
+        
+        worker_running = True
+        btn_connect.config(state="disabled")
+        loading_label.config(text="Conectando y consultando HIS-MINSA...")
+        loading_label.pack(anchor="w")
+        loading_bar.pack(fill="x", pady=(4, 0))
+        loading_bar.start(10)
+        
+        def worker():
+            try:
+                page = clientHis.connectChrome(show_messages=False)
+                if page is None:
+                    raise RuntimeError(getattr(clientHis, "last_error", None)
+                    or "No se pudo conectar con HIS-MINSA."
+                )
+                    
+                vaccines = getVaccinesByAllDni(origin_route, clientHis)
+                result_queue.put(("success", vaccines))
+            
+            except Exception as error:
+                result_queue.put(('error', str(error)))
+            finally:
+                clientHis.closePlaywright()
+                
+        threading.Thread(target=worker, daemon=True,).start()
+        check_worker()
+            
+    def check_worker():
+        nonlocal worker_running
+        try:
+            status, result = result_queue.get_nowait()
 
-        page = clientHis.connectChrome()
-        if page is None:
+        except queue.Empty:
+            root.after(500, check_worker)
             return
 
-        try:
-            vaccines = getVaccinesByAllDni(origin_route, clientHis)
+        worker_running = False
+        loading_bar.stop()
+        loading_bar.pack_forget()
+        loading_label.pack_forget()
 
-            messagebox.showinfo(
-                "Proceso finalizado",
-                f"Consulta ID: {vaccines['queryId']}\n"
-                f"DNI procesados correctamente: {vaccines['success']}\n"
-                f"Errores: {vaccines['errors']}"
-            )
+        btn_connect.config(state="normal")
 
-        except Exception as error:
+        if status == "error":
             messagebox.showerror(
                 "Error en el proceso",
-                str(error)
+                result,
+                parent=root,
             )
+            return
+
+        messagebox.showinfo(
+            "Proceso finalizado",
+            f"Consulta ID: {result['queryId']}\n"
+            f"DNI procesados correctamente: {result['success']}\n"
+            f"Errores: {result['errors']}",
+            parent=root,
+        )
         
     def initExport_excel():
         queryID = queryID_selected.get()
@@ -72,8 +116,9 @@ def initInterface(clientHis):
     #definimos la raiz de la interfaz
     root = tk.Tk()
     root.title("Consultor HIS-MINSA")
-    root.geometry("600x350")
-    root.protocol("WM_DELETE_WINDOW", lambda:close(root, clientHis.closePlaywright))
+    root.geometry("600x400")
+    root.protocol("WM_DELETE_WINDOW",     
+                  lambda: close(root, lambda:worker_running))
     
     #Interfaz de la conexión a chrome y el archivo de origen
     getData_container = tk.LabelFrame(root, text="Obtener datos")
@@ -96,6 +141,12 @@ def initInterface(clientHis):
     btn_container.pack(pady=16, fill="x")
     btn_container.grid_columnconfigure(1,weight=1)
     btn_container.grid_columnconfigure(2,weight=1)
+    
+    loading_container = tk.Frame(getData_container)
+    loading_container.pack(fill="x", padx=10, pady=(0, 8))
+
+    loading_label = tk.Label(loading_container, text="",)
+    loading_bar = ttk.Progressbar(loading_container, mode="indeterminate", length=250)
 
     tk.Button(
         btn_container,
@@ -103,11 +154,12 @@ def initInterface(clientHis):
         command=clientHis.openChrome,
     ).grid(column=1, row=0)
     
-    tk.Button(
+    btn_connect = tk.Button(
         btn_container,
         text="Conectar y continuar",
         command=connectAndExecute,
-    ).grid(column=2, row=0, )
+    )
+    btn_connect.grid(column=2, row=0, )
     
     #interfaz del procesamiento de la informacion
     filters_container = tk.LabelFrame(root, text='Procesar Información')
@@ -263,7 +315,13 @@ def interfaceValidator(input):
 
     return file
     
-def close(root, closePlaywright):
-    closePlaywright()
+def close(root, is_running):
+    if is_running():
+        messagebox.showwarning(
+            "Proceso en ejecución",
+            "Espera a que termine la consulta antes de cerrar.",
+            parent=root,
+        )
+        return
     root.destroy()
     

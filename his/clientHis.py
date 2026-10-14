@@ -13,6 +13,7 @@ class ClientHIS:
         self.browser = None
         self.playwright = None
         self.hisPage = None
+        self.last_error =  None
         
     def searchChromeApp(self):
         chrome_path = shutil.which("chrome.exe")
@@ -47,7 +48,8 @@ class ClientHIS:
         except Exception as error:
             messagebox.showerror("No se pudo abrir Chrome", str(error))
         
-    def connectChrome(self):
+    def connectChrome(self, show_messages=True):
+        self.last_error = None
         try:
             # Comprueba que Chrome ya haya iniciado el servicio CDP.
             with urlopen(f"{URL_CDP}/json/version", timeout=2):
@@ -62,22 +64,27 @@ class ClientHIS:
             self.hisPage = self.search_HisPage()
             
             if self.hisPage is None:
-                messagebox.showwarning(
-                    "Falta HIS-MINSA",
-                    "Chrome está disponible, pero no se encontró una pestaña "
-                    "de HIS-MINSA adecuada. Navega hasta allí y vuelve a conectar.",
-                )
+                self.last_error = ( "Chrome está disponible, pero no se encontró una pestaña de HIS-MINSA adecuada.")
+
+                if show_messages:
+                    messagebox.showwarning(
+                        "Falta HIS-MINSA",
+                        self.last_error
+                    )
                 return None
+            
             return self.hisPage
             
         except Exception as error:
-            messagebox.showerror(
-                "No se pudo conectar",
-                "Verifica que Chrome se haya abierto con el perfil dedicado "
-                "y que siga ejecutándose.\n\n"
-                f"Detalle: {error}",
-            )
-            return None        
+            self.last_error = str(error)
+            if show_messages:
+                messagebox.showerror(
+                    "No se pudo conectar",
+                    "Verifica que Chrome esté abierto y que siga "
+                    f"ejecutándose.\n\nDetalle: {error}",
+                )
+
+            return None      
             
     def search_HisPage(self):
         if self.browser is None:
@@ -131,5 +138,10 @@ class ClientHIS:
         }
     
     def closePlaywright(self):
-        if self.playwright is not None:
-            self.playwright.stop()
+        try:
+            if self.playwright is not None:
+                self.playwright.stop()
+        finally:
+            self.playwright = None
+            self.browser = None
+            self.hisPage = None

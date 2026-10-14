@@ -9,7 +9,7 @@ from database.database import (
 )
 
 
-def getVaccinesByAllDni(excel_route, cliente_his):
+def getVaccinesByAllDni(excel_route, cliente_his, on_progress):
     dnis, errors = getDniFromExcel(excel_route)
     if not dnis:
         return {
@@ -23,9 +23,10 @@ def getVaccinesByAllDni(excel_route, cliente_his):
 
     success = 0
     errors = list(errors)
+    total = len(dnis)
     prevDNI = None
     try:
-        for dni in dnis:
+        for current, dni in enumerate(dnis, start=1):
             try:
                 if dni == prevDNI:
                     raise ValueError( "DNI repetido consecutivamente.")
@@ -46,6 +47,8 @@ def getVaccinesByAllDni(excel_route, cliente_his):
 
             except Exception as error:
                 errors.append(f"DNI {dni}: {error}")
+            finally:
+                on_progress(current, total)
 
     finally:
         updateQuery(

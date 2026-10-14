@@ -28,7 +28,17 @@ def initInterface(clientHis):
         loading_label.config(text="Conectando y consultando HIS-MINSA...")
         loading_label.pack(anchor="w")
         loading_bar.pack(fill="x", pady=(4, 0))
-        loading_bar.start(10)
+        loading_bar["value"] = 0
+        progress_label.config(text=f"Preparando consulta")
+        progress_label.pack(anchor="e")
+        
+        def update_progress(actual, total):
+            progress = actual / total * 100 if total else 0
+
+            loading_bar["value"] = progress
+            progress_label.config(
+                text=f"{actual}/{total} DNI consultados"
+            )
         
         def worker():
             try:
@@ -38,11 +48,15 @@ def initInterface(clientHis):
                     or "No se pudo conectar con HIS-MINSA."
                 )
                     
-                vaccines = getVaccinesByAllDni(origin_route, clientHis)
+                vaccines = getVaccinesByAllDni(
+                    origin_route, 
+                    clientHis, 
+                    lambda current, total: update_progress(current, total))
                 result_queue.put(("success", vaccines))
-            
+                
             except Exception as error:
                 result_queue.put(('error', str(error)))
+                
             finally:
                 clientHis.closePlaywright()
                 
@@ -51,37 +65,45 @@ def initInterface(clientHis):
             
     def check_worker():
         nonlocal worker_running
-        try:
-            status, result = result_queue.get_nowait()
+        while True:
+            try:
+                status, result = result_queue.get_nowait()
 
-        except queue.Empty:
-            root.after(500, check_worker)
-            return
+            except queue.Empty:
+                break;
 
-        worker_running = False
-        loading_bar.stop()
-        loading_bar.pack_forget()
-        loading_label.pack_forget()
-        loading_container.pack_forget()
-
-        btn_connect.config(state="normal")
-
-        if status == "error":
-            messagebox.showerror(
-                "Error en el proceso",
-                result,
+            if status == "progress":
+                actual, total = result
+                progress_label.config(
+                    text=f"{actual}/{total} DNI consultados"
+                )
+            elif status == "success":
+                worker_running = False
+                loading_bar.stop()
+                loading_bar.pack_forget()
+                loading_label.pack_forget()
+                loading_container.pack_forget()
+                btn_connect.config(state="normal")
+                
+                messagebox.showinfo(
+                "Proceso finalizado",
+                f"Consulta ID: {result['queryId']}\n"
+                f"DNI procesados correctamente: {result['success']}\n"
+                f"Errores: {result['errors']}\n"
+                f"Detalles del error: {result['error_detail']}",
                 parent=root,
             )
-            return
 
-        messagebox.showinfo(
-            "Proceso finalizado",
-            f"Consulta ID: {result['queryId']}\n"
-            f"DNI procesados correctamente: {result['success']}\n"
-            f"Errores: {result['errors']}\n"
-            f"Detalles del error: {result['error_detail']}",
-            parent=root,
-        )
+            elif status == "error":
+                messagebox.showerror(
+                    "Error en el proceso",
+                    result,
+                    parent=root,
+                )
+                return
+            
+        if worker_running:
+            root.after(200, check_worker)
         
     def initExport_excel():
         queryID = queryID_selected.get()
@@ -160,8 +182,13 @@ def initInterface(clientHis):
     loading_container.pack(fill="x", padx=10, pady=(0, 8))
 
     loading_label = tk.Label(loading_container, text="",)
-    loading_bar = ttk.Progressbar(loading_container, mode="indeterminate", length=250)
-
+    loading_bar = ttk.Progressbar(
+        loading_container, 
+        mode="determinate", 
+        length=250,
+        maximum=100
+        )
+    progress_label = tk.Label(loading_container, text="0/0 DNI consultados")
     tk.Button(
         btn_container,
         text="Abrir Chrome para iniciar sesión",

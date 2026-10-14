@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from database.database import  getQueryList, delete_query, getPatientsAndVaccinesByQuery
 from services.query_service import getVaccinesByAllDni
-from utils.utils import export_excel
+from utils.utils import export_excel, resource_path
 import threading
 import queue
 
@@ -116,13 +116,23 @@ def initInterface(clientHis):
     #definimos la raiz de la interfaz
     root = tk.Tk()
     root.title("Consultor HIS-MINSA")
-    root.geometry("600x400")
+    root.geometry("600x350")
     root.protocol("WM_DELETE_WINDOW",     
                   lambda: close(root, lambda:worker_running))
+    root.iconbitmap(str(resource_path("assets/icono.ico")))
+    root.grid_rowconfigure(0, weight=1)
+    root.grid_rowconfigure(1, weight=0)
+    root.grid_columnconfigure(0, weight=1)
+    
+    main_container = tk.Frame(root)
+    main_container.grid(
+        row=0,
+        column=0,
+        sticky="nsew")
     
     #Interfaz de la conexión a chrome y el archivo de origen
-    getData_container = tk.LabelFrame(root, text="Obtener datos")
-    getData_container.pack(fill="x", padx=20)
+    getData_container = tk.LabelFrame(main_container, text="Obtener datos")
+    getData_container.pack(fill="x", padx=10)
 
     tk.Label(getData_container, text="Archivo Excel:").pack(anchor='w', padx=10, pady=(20, 4))
     file_entry = tk.Frame(getData_container)
@@ -162,8 +172,8 @@ def initInterface(clientHis):
     btn_connect.grid(column=2, row=0, )
     
     #interfaz del procesamiento de la informacion
-    filters_container = tk.LabelFrame(root, text='Procesar Información')
-    filters_container.pack(fill='x', padx=10, pady=8, ipady=8)
+    filters_container = tk.LabelFrame(main_container, text='Procesar Información')
+    filters_container.pack(fill='x', padx=10, pady=(8,0), ipady=8)
     
     query_container = tk.Frame(filters_container)
     query_container.pack(fill='x', padx=8, pady=4)
@@ -190,10 +200,15 @@ def initInterface(clientHis):
     tk.Button(filters_container, 
               text="Exportar",
               command=initExport_excel).pack(ipadx=8)
-    footer = tk.Frame(root)
-    footer.pack(side="bottom", fill="x", padx=10, pady=5)
 
     # -----footer-----
+    footer = tk.Frame(root)
+    footer.grid(
+        row=1,
+        column=0,
+        sticky="ew",
+        padx=10
+    )
     tk.Label(
         footer,
         text="Desarrollado por Alexander Machicado G. 2026",

@@ -62,6 +62,7 @@ def initInterface(clientHis):
         loading_bar.stop()
         loading_bar.pack_forget()
         loading_label.pack_forget()
+        loading_container.pack_forget()
 
         btn_connect.config(state="normal")
 
@@ -117,7 +118,8 @@ def initInterface(clientHis):
     #definimos la raiz de la interfaz
     root = tk.Tk()
     root.title("Consultor HIS-MINSA")
-    root.geometry("600x350")
+    root.geometry("600x370")
+    root.minsize(600,370)
     root.protocol("WM_DELETE_WINDOW",     
                   lambda: close(root, lambda:worker_running))
     root.iconbitmap(str(resource_path("assets/icono.ico")))
@@ -153,6 +155,7 @@ def initInterface(clientHis):
     btn_container.grid_columnconfigure(1,weight=1)
     btn_container.grid_columnconfigure(2,weight=1)
     
+    # interfaz del loader
     loading_container = tk.Frame(getData_container)
     loading_container.pack(fill="x", padx=10, pady=(0, 8))
 

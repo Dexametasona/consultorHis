@@ -72,7 +72,7 @@ class ClientHIS:
                         self.last_error
                     )
                 return None
-            
+            self.setVaccineRequestLimit()
             return self.hisPage
             
         except Exception as error:
@@ -145,3 +145,41 @@ class ClientHIS:
             self.playwright = None
             self.browser = None
             self.hisPage = None
+    
+    def setVaccineRequestLimit(self):
+        def modifyRequest(route):
+            request = route.request
+            url = request.url
+
+            if (
+                "/hisminsa/his/his" in url
+                and "confighistorialpacid=1" in url
+                and "C=HISTORIALATENCIONES" in url
+            ):
+                from urllib.parse import (
+                    urlsplit,
+                    parse_qsl,
+                    urlencode,
+                    urlunsplit,
+                )
+
+                parts = urlsplit(url)
+                params = dict(parse_qsl(parts.query))
+                params["limit"] = "100"
+
+                new_url = urlunsplit((
+                    parts.scheme,
+                    parts.netloc,
+                    parts.path,
+                    urlencode(params),
+                    parts.fragment,
+                ))
+
+                route.continue_(url=new_url)
+            else:
+                route.continue_()
+
+        self.hisPage.route(
+            "**/hisminsa/his/his**",
+            modifyRequest,
+        )

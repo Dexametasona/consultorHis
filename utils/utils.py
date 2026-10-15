@@ -12,6 +12,7 @@ def getDniFromExcel(file_route):
     ws = wb.active
 
     dnis = []
+    dnis_set = set()
     errors = []
 
     for index_row, (value,) in enumerate(
@@ -21,14 +22,16 @@ def getDniFromExcel(file_route):
         if value is None:
             continue  # Ignora filas vacías
 
-        text = str(value).strip()
+        dni_text = str(value).strip()
 
         # Si Excel guardó el DNI como número, recupera ceros iniciales.
         if isinstance(value, int):
-            text = f"{value:08d}"
+            dni_text = f"{value:08d}"
 
-        if re.fullmatch(r"\d{8}", text):
-            dnis.append(text)
+        if re.fullmatch(r"\d{8}", dni_text):
+           if dni_text not in dnis_set:
+                dnis.append(dni_text)
+                dnis_set.add(dni_text)
         else:
             errors.append(
                 f"Fila {index_row}: debe contener un DNI de 8 dígitos."

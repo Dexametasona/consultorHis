@@ -24,13 +24,9 @@ def getVaccinesByAllDni(excel_route, cliente_his, on_progress):
     success = 0
     errors = list(errors)
     total = len(dnis)
-    prevDNI = None
     try:
         for current, dni in enumerate(dnis, start=1):
             try:
-                if dni == prevDNI:
-                    raise ValueError( "DNI repetido consecutivamente.")
-                prevDNI = dni
                 vaccines = cliente_his.vaccinesByDni(dni)
                 save_patient(
                     vaccines["dni"],

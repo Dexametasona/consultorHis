@@ -14,3 +14,4 @@ Base de datos local
 Configuración y datos privados
 .env
 .env.*
+-- SQLite.sql

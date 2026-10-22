@@ -294,8 +294,7 @@ def queryListWindow(container, when_select):
 
         index = target[0]
         id_query = idsQuery[index]
-
-        when_select(id_query, file)
+        when_select(id_query, filesQuery[index])
         query_window.destroy()
         
     def delete():
@@ -328,7 +327,7 @@ def queryListWindow(container, when_select):
     
     query_window = tk.Toplevel(container)
     query_window.title('Seleccione la consulta')
-    query_window.geometry("400x200")
+    query_window.geometry("600x200")
     query_window.transient(container)
     query_window.grab_set()
     query_window.protocol("WM_DELETE_WINDOW", closeWindow)
@@ -345,11 +344,13 @@ def queryListWindow(container, when_select):
     
     queries = getQueryList()
     idsQuery = []
+    filesQuery = []
     
     for id, date, file, *_ in queries:
         text = f"  ID {id} | {date} | {file}"
         queryList.insert(tk.END, text)
         idsQuery.append(id)
+        filesQuery.append(file)
               
     
     btn_container = tk.Frame(query_window)

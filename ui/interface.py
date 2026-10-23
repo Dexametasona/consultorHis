@@ -350,7 +350,7 @@ def queryListWindow(container, when_select):
         text = f"  ID {id} | {date} | {file}"
         queryList.insert(tk.END, text)
         idsQuery.append(id)
-        filesQuery.append(file)
+        filesQuery.append(Path(file).name)
               
     
     btn_container = tk.Frame(query_window)

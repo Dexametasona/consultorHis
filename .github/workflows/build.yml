@@ -1,0 +1,43 @@
+
+name: Build Consultor HIS-MINSA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Compilar aplicación
+        run: |
+          pyinstaller --noconfirm --clean --onedir --windowed --name "Consultor HIS-MINSA" --icon="assets/icono.ico" --add-data "assets/icono.ico;assets" main.py
+
+      - name: Empaquetar ejecutable
+        run: |
+          Compress-Archive -Path "dist/Consultor HIS-MINSA" -DestinationPath "dist/Consultor-HIS-MINSA-Windows.zip"
+
+      - name: Publicar artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: Consultor-HIS-MINSA-Windows
+          path: dist/Consultor-HIS-MINSA-Windows.zip
+          if-no-files-found: error
+          retention-days: 14

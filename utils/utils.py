@@ -41,13 +41,12 @@ def getDniFromExcel(file_route):
     return dnis, errors
 
 
-def export_excel(data, cpms):
+def export_excel(data, cpms, text):
     if not data:
         return None
-    
     vaccineGroupByDniAndLab = defaultdict(lambda: defaultdict(list))
     patients = {}
-
+    filename = text[10:]
     for dni, patient, fn, lab, date in data:
         if dni not in patients:
             patients[dni] = {
@@ -82,7 +81,7 @@ def export_excel(data, cpms):
         title="Guardar resultados",
         defaultextension=".xlsx",
         filetypes=[("Archivo Excel", "*.xlsx")],
-        initialfile="resultados_his.xlsx"
+        initialfile=f"resultado_{cpms}_{filename}"
     )
 
     if not output_route:

@@ -131,7 +131,7 @@ def initInterface(clientHis):
             )
             return
 
-        output_route = export_excel(vaccinesByPatients, cpms)
+        output_route = export_excel(vaccinesByPatients, cpms, query_selected.get())
         if output_route:
             messagebox.showinfo(
                 "Exportación completada",

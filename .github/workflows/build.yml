@@ -6,6 +6,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -30,7 +35,20 @@ jobs:
         run: |
           pyinstaller --noconfirm --clean --onedir --windowed --name "Consultor HIS-MINSA" --icon="assets/icono.ico" --add-data "assets/icono.ico;assets" main.py
 
-      - name: Publicar artefacto
+      - name: Crear ZIP para Release
+        if: github.event_name == 'release'
+        run: |
+          Compress-Archive -Path "dist/Consultor HIS-MINSA" -DestinationPath "dist/Consultor-HIS-MINSA-Windows.zip"
+
+      - name: Publicar ZIP en GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Consultor-HIS-MINSA-Windows.zip
+          fail_on_unmatched_files: true
+
+      - name: Publicar artefacto de compilación
+        if: github.event_name != 'release'
         uses: actions/upload-artifact@v4
         with:
           name: Consultor-HIS-MINSA-Windows

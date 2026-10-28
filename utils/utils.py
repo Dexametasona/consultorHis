@@ -6,6 +6,11 @@ from openpyxl import Workbook, load_workbook
 import sys
 from pathlib import Path
 
+from openpyxl.styles import PatternFill
+from utils.sheetStyles import *
+from openpyxl.utils import get_column_letter
+from database.data import vaccineList
+
 
 def getDniFromExcel(file_route):
     wb = load_workbook(file_route, read_only=True, data_only=True)
@@ -41,13 +46,17 @@ def getDniFromExcel(file_route):
     return dnis, errors
 
 
-def export_excel(data, cpms, text):
+def export_excel(data, cpmsList, text):
     if not data:
         return None
-    vaccineGroupByDniAndLab = defaultdict(lambda: defaultdict(list))
+    
+    vaccineGroupByDniAndLab = defaultdict(
+        lambda: defaultdict(
+            lambda:defaultdict( list))
+    )
     patients = {}
     filename = text[10:]
-    for dni, patient, fn, lab, date in data:
+    for dni, patient, fn, cpms, lab, date in data:
         if dni not in patients:
             patients[dni] = {
                 "paciente": patient,
@@ -60,28 +69,33 @@ def export_excel(data, cpms, text):
             lab_key = "SIN_LAB"
 
         if date:
-            vaccineGroupByDniAndLab[dni][lab_key].append(date)
+            vaccineGroupByDniAndLab[dni][cpms][lab_key].append(date)
     # Identificar los LAB únicos, incluyendo SIN_LAB.
-    labs = sorted({
-        lab
-        for group in vaccineGroupByDniAndLab.values()
-        for lab in group
-    })
-    
-     # Determinar cuántas columnas necesita cada LAB.
-    columnsBySameLab = {
-        lab: max(
-            len(group.get(lab, []))
+    labsByCpms = {
+        cpms: sorted({
+            lab
             for group in vaccineGroupByDniAndLab.values()
-        )
-        for lab in labs
+            for lab in group.get(cpms, {})
+        })
+        for cpms in cpmsList    
     }
+    columnsByCpmsAndLab = {}
+     # Determinar cuántas columnas necesita cada LAB.
+    for cpms in cpmsList:
+        for lab in labsByCpms[cpms]:
+            columnsByCpmsAndLab[(cpms, lab)] = max(
+                (
+                    len(group.get(cpms, {}).get(lab, []))
+                    for group in vaccineGroupByDniAndLab.values()
+                ),
+                default=0,
+            )
     
     output_route = filedialog.asksaveasfilename(
         title="Guardar resultados",
         defaultextension=".xlsx",
         filetypes=[("Archivo Excel", "*.xlsx")],
-        initialfile=f"resultado_{cpms}_{filename}"
+        initialfile=f"resultado_{'-'.join(cpmsList)}_{filename}"
     )
 
     if not output_route:
@@ -92,31 +106,92 @@ def export_excel(data, cpms, text):
     sheet.title = "Atenciones"
     
     # Crear cabeceras dinámicas.
-    headers = ["DNI", "Paciente", "FN", "Edad"]
-    for lab in labs:
-        for number in range(columnsBySameLab[lab]):
-            sufijo = "" if number == 0 else f"({number})"
-            headers.append(f"{cpms}-{lab}{sufijo}")
+    sheet.append(["", "", "", ""])
+    sheet.append(["DNI", "Paciente", "FN", "Edad"])
+    col = 5
+    for index,cpms in enumerate(cpmsList):
+        vaccine_name = vaccineList.get(cpms, cpms)
+        firstCol = col
+        color = vaccineColors[index % len(vaccineColors)]
+        
+        for lab in labsByCpms[cpms]:
+            columnLabSize = columnsByCpmsAndLab[(cpms, lab)]
+            
+            for i in range(columnLabSize):
+                sufix = "" if i == 0 else f"({i})"
+                sheet.cell(
+                    row=2,
+                    column=col,
+                    value=f"{lab}{sufix}"
+                )
+            col += 1
+        endCol = col-1
+        
+        if(endCol >= firstCol):
+            sheet.cell(
+                row=1,
+                column=firstCol,
+                value=vaccine_name
+            )
+            
+            if(endCol > firstCol):
+                sheet.merge_cells(
+                    start_row = 1,
+                    start_column=firstCol,
+                    end_row=1,
+                    end_column=endCol
+                )
+                
+            for colIndex in range(firstCol, endCol + 1):
+                for row in (1, 2):
+                    current_cell = sheet.cell(row=row, column=colIndex)
+                    current_cell.fill = PatternFill(
+                        fill_type="solid",
+                        fgColor=color
+                    )
+                    current_cell.font = headerStyle
+                    current_cell.alignment = alignment
+                    current_cell.border = border
+    
+    for colIndex in range(1, 5):
+        current_cell = sheet.cell(row=2, column=colIndex)
+        current_cell.fill = PatternFill(
+            fill_type="solid",
+            fgColor="334155"
+        )
+        current_cell.font = headerStyle
+        current_cell.alignment = alignment
+        current_cell.border = border
 
-    sheet.append(headers)
+    # Altura de los encabezados.
+    sheet.row_dimensions[1].height = 25
+    sheet.row_dimensions[2].height = 23
     
     for dni, datos in patients.items():
-        row = [dni, datos["paciente"] or "", datos["fn"] or "", None]
+        row = [
+            dni, 
+            datos["paciente"] or "", 
+            datos["fn"] or "", 
+            None
+            ]
 
-        for lab in labs:
-            dates = sorted(
-                vaccineGroupByDniAndLab[dni].get(lab, []),
-                key=sort_dates
-            )
-
-            amount = columnsBySameLab[lab]
-
-            for number in range(amount):
-                row.append(
-                    dates[number]
-                    if number < len(dates)
-                    else ""
+        for cpms in cpmsList:
+            for lab in labsByCpms[cpms]:
+                dates = sorted(
+                    vaccineGroupByDniAndLab[dni]
+                    .get(cpms, {})
+                    .get(lab, []),
+                    key=sort_dates
                 )
+
+                amount = columnsByCpmsAndLab[(cpms, lab)]
+
+                for number in range(amount):
+                    row.append(
+                        dates[number]
+                        if number < len(dates)
+                        else ""
+                    )
 
         sheet.append(row)
         current_row = sheet.max_row
@@ -128,10 +203,20 @@ def export_excel(data, cpms, text):
 
 
     sheet.freeze_panes = "E2"
-    sheet.auto_filter.ref = sheet.dimensions
+    sheet.auto_filter.ref = (
+        f"A2:{get_column_letter(sheet.max_column)}{sheet.max_row}"
+    )
+    
+    sheet.column_dimensions["A"].width = 13
+    sheet.column_dimensions["B"].width = 34
+    sheet.column_dimensions["C"].width = 14
+    sheet.column_dimensions["D"].width = 10
 
-    
-    
+    for colIndex in range(5, sheet.max_column + 1):
+        sheet.column_dimensions[
+            get_column_letter(colIndex)
+        ].width = 15
+        
     book.save(output_route)
 
     return output_route

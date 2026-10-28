@@ -217,12 +217,18 @@ def save_patientByQuery(queryId, dni):
 
 
 def getPatientsAndVaccinesByQuery(queryId, cpms):
+    if not cpms:
+        return []
+    
+    placeholders = ", ".join("?" for _ in cpms)
+    
     with getConnection() as connection:
-        cursor = connection.execute("""
+        cursor = connection.execute(f"""
             SELECT
                 p.dni,
                 p.patient,
                 p.birthdate,
+                v.cpms,
                 v.lab,
                 v.date
             FROM query_patients q
@@ -231,9 +237,9 @@ def getPatientsAndVaccinesByQuery(queryId, cpms):
             LEFT JOIN vaccines v
                 ON v.query_id = q.query_id
                 AND v.dni = q.dni
-                AND v.cpms = ?
+                AND v.cpms IN({placeholders})
             WHERE q.query_id = ?
             ORDER BY p.patient
-        """, (cpms, queryId))
+        """, (*cpms, queryId))
 
         return cursor.fetchall()

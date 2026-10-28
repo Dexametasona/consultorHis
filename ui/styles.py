@@ -105,3 +105,30 @@ def configStyle(root):
             ("active", "#D5E2FC"),
         ],
     )
+    
+    # Selección de vacunas
+    style.configure(
+        "Vaccine.TFrame",
+        background=SURFACE,
+    )
+
+    style.configure(
+        "Vaccine.TCheckbutton",
+        background=SURFACE,
+        foreground=TEXT,
+        font=("Segoe UI", 9),
+        padding=4,
+    )
+
+    style.map(
+        "Vaccine.TCheckbutton",
+        background=[("active", SURFACE)],
+        foreground=[("disabled", MUTED)],
+    )
+
+    style.configure(
+        "VaccineCount.TLabel",
+        background=SURFACE,
+        foreground=MUTED,
+        font=("Segoe UI", 9),
+    )

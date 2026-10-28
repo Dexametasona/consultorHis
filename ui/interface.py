@@ -2,6 +2,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from database.database import  getQueryList, delete_query, getPatientsAndVaccinesByQuery
+from database.data import vaccineList
 from services.query_service import getVaccinesByAllDni
 from ui.styles import configStyle
 from utils.utils import export_excel, resource_path
@@ -11,6 +12,7 @@ import queue
 def initInterface(clientHis):
     result_queue = queue.Queue()
     worker_running = False
+    
     def selectQuery(id_query, file):
         queryID_selected.set(id_query)
         query_selected.set(f"Consulta: {file}")
@@ -106,9 +108,42 @@ def initInterface(clientHis):
         if worker_running:
             root.after(200, check_worker)
         
+    def toggle_vaccines():
+            isNotAllMarked = not all(
+                vaccineVar.get()
+                for vaccineVar in vaccinesTkVar.values()
+            )
+            
+            for vaccineVar in vaccinesTkVar.values():
+                vaccineVar.set(isNotAllMarked)
+            
+            updateInterface()
+            
+    def updateInterface(*args):
+        checked_count = sum(
+            vaccineVar.get()
+            for vaccineVar in vaccinesTkVar.values()
+        )
+        vaccines_selected_label.config(
+            text = f"{checked_count} de {len(vaccineList)}"
+        )
+        toggleCheckBtns.config(
+            text = ("Desmarcar todos"
+                    if checked_count == len(vaccineList)
+                    else "Marcar todos"
+                    )
+        )
+    
+    def getVaccinesSelected():
+        return [
+            vaccine_cpms
+            for vaccine_cpms, tkVar in vaccinesTkVar.items()
+            if tkVar.get()
+        ]   
+        
     def initExport_excel():
         queryID = queryID_selected.get()
-        cpms = input_codigo.get().strip()
+        cpms = getVaccinesSelected()
 
         if queryID == 0:
             messagebox.showwarning(
@@ -116,10 +151,10 @@ def initInterface(clientHis):
                 "Primero selecciona una consulta del historial."
             )
             return
-        if len(cpms) < 3:
+        if len(cpms) < 1:
             messagebox.showwarning(
-                "Código inválido",
-                "Ingresa al menos 3 caracteres."
+                "Reporte inválido",
+                "Selecciona al menos una vacuna para el reporte.",
             )
             return
 
@@ -130,18 +165,17 @@ def initInterface(clientHis):
                 "No se encontraron pacientes en esta consulta?."
             )
             return
-
         output_route = export_excel(vaccinesByPatients, cpms, query_selected.get())
         if output_route:
             messagebox.showinfo(
                 "Exportación completada",
                 f"Se exportaron {len(vaccinesByPatients)} atenciones.\n\n{output_route}"
             )
-
+    
     #definimos la raiz de la interfaz
     root = tk.Tk()
     root.title("Consultor HIS-MINSA")
-    root.geometry("600x398")
+    root.geometry("600x665")
     root.minsize(600,398)
     root.protocol("WM_DELETE_WINDOW",     
                   lambda: close(root, lambda:worker_running))
@@ -177,7 +211,7 @@ def initInterface(clientHis):
     
     ttk.Label(
         getData_container,
-        text="Selecciona el archivo que contiene la lista de DNI.",
+        text="Selecciona el archivo que contiene la lista de DNIs.",
         style="Muted.TLabel",
     ).pack(anchor="w", pady=(0, 10))
 
@@ -235,6 +269,10 @@ def initInterface(clientHis):
     query_container.pack(fill='x', padx=8, pady=(8,0))
     query_selected = tk.StringVar(value='Ninguna')
     queryID_selected = tk.IntVar(value=0)
+    vaccinesTkVar = {
+        vaccines_cpms:tk.BooleanVar(value=False)
+        for vaccines_cpms in vaccineList.keys()
+    }
         
     ttk.Button(query_container, 
               text='Seleccionar consulta', 
@@ -246,17 +284,67 @@ def initInterface(clientHis):
               style='Card.TLabelframe.Label'
               ).grid(column=2, row=0, padx=8)
     
-    cpms_container = ttk.Frame(filters_container, style='Card.TLabelframe.Label')
-    cpms_container.pack(padx=10, anchor='w')
-    
-    ttk.Label(
-        cpms_container,
-        text="Código CPMS/CIE (mínimo 3 caracteres):",
-        style='Card.TLabelframe.Label'
-    ).pack(pady=(16, 4))
+    # Selección de vacunas
+    report_container = ttk.LabelFrame(
+        filters_container,
+        text="Vacunas para el reporte",
+        style="Card.TLabelframe",
+        padding=(10, 8),
+    )
+    report_container.pack(
+        fill="x",
+        padx=10,
+        pady=(12, 8),
+    )
 
-    input_codigo = ttk.Entry(cpms_container, width=15, style='App.TEntry')
-    input_codigo.pack(anchor="w")
+    report_header = ttk.Frame(
+        report_container,
+        style="Vaccine.TFrame",
+    )
+    report_header.pack(fill="x")
+
+    vaccines_selected_label = ttk.Label(
+        report_header,
+        text="0 de 23 seleccionadas",
+        style="VaccineCount.TLabel",
+    )
+    vaccines_selected_label.pack(side="left")
+
+    toggleCheckBtns = ttk.Button(
+        report_header,
+        text="Marcar todos",
+        style="Secondary.TButton",
+        command=toggle_vaccines,
+    )
+    toggleCheckBtns.pack(side="right")
+
+    vaccines_grid = ttk.Frame(
+        report_container,
+        style="Vaccine.TFrame",
+    )
+    vaccines_grid.pack(fill="x", pady=(8, 0))
+
+    for index, vaccine in enumerate(vaccineList.items()):
+        row = index // 3
+        column = index % 3
+
+        ttk.Checkbutton(
+            vaccines_grid,
+            text=vaccine[1],
+            variable=vaccinesTkVar[vaccine[0]],
+            style="Vaccine.TCheckbutton",
+            command=updateInterface,
+        ).grid(
+            row=row,
+            column=column,
+            sticky="w",
+            padx=(0, 12),
+            pady=2,
+        )
+
+    vaccines_grid.columnconfigure(0, weight=1)
+    vaccines_grid.columnconfigure(1, weight=1)
+    
     
     ttk.Button(filters_container, 
               text="Exportar",

@@ -124,7 +124,7 @@ def export_excel(data, cpmsList, text):
                     column=col,
                     value=f"{lab}{sufix}"
                 )
-            col += 1
+                col += 1
         endCol = col-1
         
         if(endCol >= firstCol):
